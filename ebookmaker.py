@@ -4,6 +4,7 @@
 import os
 import html
 import json
+import re
 from glob import glob
 from string import Template
 from bs4 import BeautifulSoup
@@ -76,7 +77,12 @@ class Generator(object):
     def collectImagesFromEBookContents(self, htmlFile):
         with open(htmlFile, encoding='utf-8', mode='r') as f:
             soup = BeautifulSoup(f.read())
-            return [img.src for img in soup.body.findAll('img') if img.has_attr('src')]
+        images = []
+        for img in soup.body.findAll('img'):
+            m = re.search(r'src="(.+?)"', str(img))
+            if m:
+                images.append(m.group(1).strip())
+        return images
 
     def initEBookContentsLists(self):
         self.tocList = []
@@ -241,12 +247,14 @@ class OPFGenerator(Generator):
 
         # Add images.
         for image in self.images:
-            imageFile = os.path.join('OEBPS', image)
-            epubFile.write(image, imageFile)
+            if image is not None:
+                imageFile = os.path.join('OEBPS', image)
+                epubFile.write(image, imageFile)
 
         # Add style sheet file.
-        style = os.path.join('OEBPS', 'style.css')
-        epubFile.write('style.css', style, ZIP_STORED)
+        if os.path.isfile('style.css'):
+            style = os.path.join('OEBPS', 'style.css')
+            epubFile.write('style.css', style, ZIP_STORED)
 
         # Add content files.
         for item in self.ebook['contents']:
